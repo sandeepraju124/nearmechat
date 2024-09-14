@@ -141,7 +141,25 @@ def execute_query(query, params=None):
         return result
     except Exception as e:
         raise e
+# this is for making web for Chatlist
 
+@socketio.on('join_chat_list')
+def on_join_chat_list(data):
+    user_id = data['user_id']
+    join_room(f"chat_list_{user_id}")
+    emit('user_joined_chat_list', {'user_id': user_id}, room=f"chat_list_{user_id}")
+
+@socketio.on('leave_chat_list')
+def on_leave_chat_list(data):
+    user_id = data['user_id']
+    leave_room(f"chat_list_{user_id}")
+    emit('user_left_chat_list', {'user_id': user_id}, room=f"chat_list_{user_id}")
+
+def notify_chat_list_update(user_id):
+    conversation_list = get_user_conversations(user_id)
+    socketio.emit('chat_list_update', conversation_list, room=f"chat_list_{user_id}")
+
+# this is for making web for Chatlist
 
 @app.route('/api/conversationslist/<user_id>', methods=['GET'])
 def get_user_conversations(user_id):
@@ -246,6 +264,50 @@ def get_user_conversations(user_id):
 #     else:
 #         return jsonify({'error': 'Failed to send message'}), 400
 
+
+# current version
+# @app.route('/api/messages', methods=['POST'])
+# def send_message():
+#     data = request.json
+#     conversation_id = data['conversation_id']
+    
+#     sender_id = data['sender_id']
+#     recipient_id = data['recipient_id']
+
+#     conversation = conversations.find_one({'conversation_id': conversation_id})
+    
+#     if not conversation:
+#         # Create a new conversation if it doesn't exist
+#         conversation = {
+#             'conversation_id': conversation_id,
+#             'participants': [sender_id, recipient_id],
+#             'messages': [],
+#             'created_at': datetime.utcnow(),
+#             'updated_at': datetime.utcnow()
+#         }
+#         conversations.insert_one(conversation)
+    
+#     message = {
+#         'message_id': str(ObjectId()),
+#         'sender_id': sender_id,
+#         'message': data['message'],
+#         'timestamp': datetime.utcnow().isoformat(),
+#         'read': False
+#     }
+#     result = conversations.update_one(
+#         {'conversation_id': conversation_id},
+#         {
+#             '$push': {'messages': {'$each': [message], '$position': 0}},
+#             '$set': {'updated_at': datetime.utcnow()}
+#         }
+#     )
+#     if result.modified_count > 0 or result.upserted_id:
+#         socketio.emit('message', message, room=conversation_id)
+#         return jsonify(message), 201
+#     else:
+#         return jsonify({'error': 'Failed to send message'}), 400
+
+# new version
 @app.route('/api/messages', methods=['POST'])
 def send_message():
     data = request.json
@@ -257,7 +319,6 @@ def send_message():
     conversation = conversations.find_one({'conversation_id': conversation_id})
     
     if not conversation:
-        # Create a new conversation if it doesn't exist
         conversation = {
             'conversation_id': conversation_id,
             'participants': [sender_id, recipient_id],
@@ -283,10 +344,11 @@ def send_message():
     )
     if result.modified_count > 0 or result.upserted_id:
         socketio.emit('message', message, room=conversation_id)
+        notify_chat_list_update(sender_id)
+        notify_chat_list_update(recipient_id)
         return jsonify(message), 201
     else:
         return jsonify({'error': 'Failed to send message'}), 400
-
 
 @socketio.on('join')
 def on_join(data):
@@ -321,4 +383,4 @@ def handle_message(data):
     emit('message', message, room=data['conversation_id'])
 
 if __name__ == '__main__':
-    socketio.run(app, debug=True)
+    socketio.run(app, host='0.0.0.0', port=5000, debug=True)
