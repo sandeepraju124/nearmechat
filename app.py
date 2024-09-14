@@ -266,48 +266,6 @@ def get_user_conversations(user_id):
 
 
 # current version
-# @app.route('/api/messages', methods=['POST'])
-# def send_message():
-#     data = request.json
-#     conversation_id = data['conversation_id']
-    
-#     sender_id = data['sender_id']
-#     recipient_id = data['recipient_id']
-
-#     conversation = conversations.find_one({'conversation_id': conversation_id})
-    
-#     if not conversation:
-#         # Create a new conversation if it doesn't exist
-#         conversation = {
-#             'conversation_id': conversation_id,
-#             'participants': [sender_id, recipient_id],
-#             'messages': [],
-#             'created_at': datetime.utcnow(),
-#             'updated_at': datetime.utcnow()
-#         }
-#         conversations.insert_one(conversation)
-    
-#     message = {
-#         'message_id': str(ObjectId()),
-#         'sender_id': sender_id,
-#         'message': data['message'],
-#         'timestamp': datetime.utcnow().isoformat(),
-#         'read': False
-#     }
-#     result = conversations.update_one(
-#         {'conversation_id': conversation_id},
-#         {
-#             '$push': {'messages': {'$each': [message], '$position': 0}},
-#             '$set': {'updated_at': datetime.utcnow()}
-#         }
-#     )
-#     if result.modified_count > 0 or result.upserted_id:
-#         socketio.emit('message', message, room=conversation_id)
-#         return jsonify(message), 201
-#     else:
-#         return jsonify({'error': 'Failed to send message'}), 400
-
-# new version
 @app.route('/api/messages', methods=['POST'])
 def send_message():
     data = request.json
@@ -319,6 +277,7 @@ def send_message():
     conversation = conversations.find_one({'conversation_id': conversation_id})
     
     if not conversation:
+        # Create a new conversation if it doesn't exist
         conversation = {
             'conversation_id': conversation_id,
             'participants': [sender_id, recipient_id],
@@ -344,11 +303,52 @@ def send_message():
     )
     if result.modified_count > 0 or result.upserted_id:
         socketio.emit('message', message, room=conversation_id)
-        notify_chat_list_update(sender_id)
-        notify_chat_list_update(recipient_id)
         return jsonify(message), 201
     else:
         return jsonify({'error': 'Failed to send message'}), 400
+
+# new version
+# @app.route('/api/messages', methods=['POST'])
+# def send_message():
+#     data = request.json
+#     conversation_id = data['conversation_id']
+    
+#     sender_id = data['sender_id']
+#     recipient_id = data['recipient_id']
+
+#     conversation = conversations.find_one({'conversation_id': conversation_id})
+    
+#     if not conversation:
+#         conversation = {
+#             'conversation_id': conversation_id,
+#             'participants': [sender_id, recipient_id],
+#             'messages': [],
+#             'created_at': datetime.utcnow(),
+#             'updated_at': datetime.utcnow()
+#         }
+#         conversations.insert_one(conversation)
+    
+#     message = {
+#         'message_id': str(ObjectId()),
+#         'sender_id': sender_id,
+#         'message': data['message'],
+#         'timestamp': datetime.utcnow().isoformat(),
+#         'read': False
+#     }
+#     result = conversations.update_one(
+#         {'conversation_id': conversation_id},
+#         {
+#             '$push': {'messages': {'$each': [message], '$position': 0}},
+#             '$set': {'updated_at': datetime.utcnow()}
+#         }
+#     )
+#     if result.modified_count > 0 or result.upserted_id:
+#         socketio.emit('message', message, room=conversation_id)
+#         notify_chat_list_update(sender_id)
+#         notify_chat_list_update(recipient_id)
+#         return jsonify(message), 201
+#     else:
+#         return jsonify({'error': 'Failed to send message'}), 400
 
 @socketio.on('join')
 def on_join(data):
