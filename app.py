@@ -41,6 +41,10 @@ def get_conversation(conversation_id):
         return jsonify(conversation)
     return jsonify({'error': 'Conversation not found'}), 404
 
+@app.route('/check', methods=['GET'])
+def check():
+    return jsonify({'Health': 'Good'}), 404
+
 
 @app.route('/api/conversations/<conversation_id>/messages', methods=['GET'])
 def get_messages(conversation_id):
